@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "File server GUI": {
+      "commandName": "Project",
+      "nativeDebugging": false
+    }
+  }
+}

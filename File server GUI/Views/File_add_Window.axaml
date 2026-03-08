@@ -1,0 +1,40 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:File_server_GUI.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="File_server_GUI.Views.File_add_Window"
+        x:DataType="vm:File_add_Model"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="File_server_GUI">
+
+     <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:File_add_Model/>
+    </Design.DataContext>
+
+    <StackPanel>
+	  <StackPanel HorizontalAlignment="Stretch" Spacing="12">
+	  <TextBlock Margin="10,10,10,10">Hello!</TextBlock>
+          </StackPanel>
+
+      <StackPanel Spacing="12" Orientation="Horizontal" HorizontalAlignment="Stretch">
+      <TextBox Margin="10,10,10,10" IsReadOnly="True" Watermark="File folder" HorizontalAlignment="Stretch" Text="{Binding Full_path}"></TextBox>
+      <Button Margin="10,10,10,10" HorizontalAlignment="Right" Click="Load_file">Choose folder</Button>
+           
+      </StackPanel>
+        <StackPanel Spacing="12" Orientation="Horizontal" HorizontalAlignment="Stretch">
+            <TextBlock>Filesize: </TextBlock>
+            <TextBlock Text="{Binding Filesize}"></TextBlock>
+            </StackPanel>
+        
+        <StackPanel Spacing="12" Orientation="Horizontal" HorizontalAlignment="Stretch">
+        <Button Click="Confirm">Apply</Button>
+        <Button Click="Cancel">Cancel</Button>
+        </StackPanel>
+    </StackPanel>
+
+
+</Window>

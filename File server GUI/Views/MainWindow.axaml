@@ -1,0 +1,125 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:File_server_GUI.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="File_server_GUI.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="File_server_GUI">
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    	<DockPanel>
+		<Menu DockPanel.Dock="Top">
+        
+        <MenuItem Header="Server">
+            <MenuItem Header="Configure"/>
+          
+            
+            
+        </MenuItem>
+
+        
+
+    </Menu>
+
+		<Border DockPanel.Dock="Top" 
+                BorderBrush="#E0E0E0" 
+                BorderThickness="0,0,0,1" 
+                Padding="10">
+                
+            
+            
+        </Border>
+
+        <TabControl>
+    <TabItem Header="Home">
+        
+<StackPanel>
+    
+	<TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    <DataGrid Margin="20" ItemsSource="{Binding client_observables}" 
+            IsReadOnly="True" 
+           GridLinesVisibility="All"
+             BorderThickness="1" BorderBrush="Gray">
+        <DataGrid.Columns>
+            <DataGridTextColumn Header="Country"  Binding="{Binding Flag}"/>
+            <DataGridTextColumn Header="Ip adress"  Binding="{Binding Ip_adress}"/>
+            <DataGridTextColumn Header="Online"  Binding="{Binding Online}"/>
+            <DataGridTextColumn Header="Balance"  Binding="{Binding Balance}"/>
+            <DataGridTextColumn Header="Ratio"  Binding="{Binding Ratio}"/>
+        </DataGrid.Columns>
+        <DataGrid.Styles>
+					  <Style Selector="DataGridRow">
+						  <Setter Property="ContextMenu">
+							  <ContextMenu>
+
+								  <MenuItem Header="Edit balance"
+											Command="{Binding $parent[DataGrid].DataContext.Edit_client_balanceCommand}"
+											CommandParameter="{Binding}" />
+
+								  
+
+							  </ContextMenu>
+						  </Setter>
+					  </Style>
+				  </DataGrid.Styles>
+    
+    </DataGrid>
+    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    
+      
+</StackPanel>
+    </TabItem>
+
+     <TabItem Header="Files">
+          <StackPanel>
+              <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+			  <TextBox Text="{Binding Filter_str}"></TextBox>
+              <DataGrid Margin="20" ItemsSource="{Binding file_reg_observables}" 
+            IsReadOnly="True" 
+           GridLinesVisibility="All"
+             BorderThickness="1" BorderBrush="Gray">
+                 <DataGrid.Columns>
+                       <DataGridTextColumn Header="Name"  Binding="{Binding Full_name}"/>
+                       <DataGridTextColumn Header="Filesize"  Binding="{Binding Filesize}"/>
+                       <DataGridTextColumn Header="Path"  Binding="{Binding Full_path}"/>
+                       <DataGridTextColumn Header="Upload multiplier"  Binding="{Binding File_bonus}"/>
+                 </DataGrid.Columns>
+				  <DataGrid.Styles>
+					  <Style Selector="DataGridRow">
+						  <Setter Property="ContextMenu">
+							  <ContextMenu>
+
+								  <MenuItem Header="Edit file registry"
+											Command="{Binding $parent[DataGrid].DataContext.File_registry_edit}"
+											CommandParameter="{Binding}" />
+
+								  <MenuItem Header="Export download file"
+											Command="{Binding $parent[DataGrid].DataContext.Export_download_file}"
+											CommandParameter="{Binding}" />
+
+
+							  </ContextMenu>
+						  </Setter>
+					  </Style>
+				  </DataGrid.Styles>
+
+			  </DataGrid>
+			  <Button Click="Add_file">Add file</Button>
+		  </StackPanel>
+     </TabItem>
+</TabControl>
+
+
+
+    </DockPanel>
+
+
+</Window>
