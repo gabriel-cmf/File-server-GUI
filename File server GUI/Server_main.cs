@@ -90,36 +90,11 @@ public class Server_main
         {
             var files = db.GetCollection<File_registry>("files");
 
-            if (files.Count() <= 0)
+            Debug.WriteLine("Reading from db");
+            add_log_msg("Reading from db");
+            foreach (File_registry file in files.FindAll())
             {
-                File_registry f1 = new();
-                var b1 = f1.try_register_file("C:\\Users\\Campo\\source\\repos\\File_test_server_gui\\File_test_server_gui\\bin\\Debug\\net8.0\\macuco.jpg");
-                if (b1)
-                {
-                    available_files[f1.file_hash] = f1;
-                    files.Insert(f1);
-                }
-
-
-                File_registry f2 = new();
-                var b2 = f2.try_register_file("C:\\Users\\Campo\\source\\repos\\File_test_server_gui\\File_test_server_gui\\bin\\Debug\\net8.0\\RelatorioFinal-INF491.pdf");
-                if (b2)
-                {
-                    available_files[f2.file_hash] = f2;
-                    files.Insert(f2);
-                }
-
-
-
-            }
-            else
-            {
-                Debug.WriteLine("Reading from db");
-                add_log_msg("Reading from db");
-                foreach (File_registry file in files.FindAll())
-                {
-                    available_files[file.file_hash] = file;
-                }
+                available_files[file.file_hash] = file;
             }
 
             var clients = db.GetCollection<Client_registry>("clients");
