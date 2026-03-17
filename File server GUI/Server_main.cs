@@ -1,6 +1,8 @@
-﻿using Avalonia.Threading;
+﻿using Avalonia.Collections;
+using Avalonia.Threading;
 using File_server_GUI.data;
 using File_server_GUI.Views;
+using File_server_GUI.workers;
 using File_test_server.workers;
 using File_test_server_gui.data;
 using File_test_server_gui.workers;
@@ -12,14 +14,13 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Security.Cryptography;
-using Avalonia.Collections;
-using File_server_GUI.workers;
 
 public enum client_message_type
 {
@@ -59,7 +60,10 @@ public class Server_main
     {
         udp_agent = new UdpClient(AddressFamily.InterNetworkV6);
         udp_agent.Client.DualMode = true;
-        udp_agent.Client.Bind(new IPEndPoint(IPAddress.IPv6Any, listenPort));
+
+
+
+        udp_agent.Client.Bind(new IPEndPoint(get_ipv6_adress(), listenPort));
         workerList = new();
         client_upd_ports = new();
         tasks = new();
@@ -133,6 +137,33 @@ public class Server_main
         add_log_msg("Server open at:");
         add_log_msg(get_main_ip().ToString());
 
+    }
+
+
+    public IPAddress get_ipv6_adress()
+    {
+        var nics = NetworkInterface.GetAllNetworkInterfaces();
+        foreach (var adap in nics)
+        {
+            if (!adap.Supports(NetworkInterfaceComponent.IPv6)) { continue; }
+
+            var props = adap.GetIPProperties();
+            var ipv6_props = props.GetIPv6Properties();
+
+            if(ipv6_props == null) { continue; }
+
+            foreach (var uap in props.UnicastAddresses)
+            {
+                if(uap.Address.AddressFamily == AddressFamily.InterNetworkV6 && !uap.Address.IsIPv6LinkLocal)
+                {
+                    return uap.Address;
+                }
+            }
+
+
+        }
+
+        return IPAddress.IPv6Any;
     }
 
     public Task create_querier_worker(Dictionary<string, object> dict, string full_path, long client_code = 0)
@@ -565,6 +596,19 @@ public class Server_main
         if (local_endpoint == null) { return "Error"; }
         IPEndPoint iep = (IPEndPoint)local_endpoint;
         return iep.Address.ToString();
+    }
+
+    public string get_endpoint()
+    {
+        EndPoint? local_endpoint = udp_agent.Client.LocalEndPoint;
+        if (local_endpoint == null) 
+        {
+            add_log_msg("Get server endpoint failed");
+            return "Error"; 
+        }
+        
+        IPEndPoint iep = (IPEndPoint)local_endpoint;
+        return iep.ToString();
     }
 
     public string get_main_port()

@@ -137,8 +137,8 @@ namespace File_server_GUI.ViewModels
             {
                 Dictionary<string, object> data = new Dictionary<string, object>();
                 data["hash"] = fr.file_hash;
-                data["url"] = sm.get_main_ip();
-                data["port"] = sm.get_main_port();
+                data["url"] = sm.get_endpoint();
+                //data["port"] = sm.get_main_port();
                 string json_dict = JsonConvert.SerializeObject(data);
                 await using var stream = await file.OpenWriteAsync();
                 using var writer = new StreamWriter(stream);
