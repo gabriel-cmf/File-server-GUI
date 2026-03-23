@@ -115,8 +115,8 @@ namespace File_test_server.workers
             long ex1 = long.MaxValue;
             //int shave = 28;
             byte[] long_size = BitConverter.GetBytes(ex1);
-            Console.WriteLine("long size");
-            Console.WriteLine(long_size.Length);
+            log_message("long size");
+            log_message(long_size.Length.ToString());
             long data_space = get_max_packet() - (long_size.Length * 2);
 
 
@@ -145,7 +145,7 @@ namespace File_test_server.workers
             File_registry? fr = owner.try_get_registry(received_hash);
 
 
-            Debug.WriteLine("Answering file query");
+            log_message("Answering file query");
 
             Dictionary<string, object> data = new();
             data["type"] = 2;
@@ -174,7 +174,7 @@ namespace File_test_server.workers
                 data["found"] = false;
                 data["filesize"] = 0;
                 data["packets"] = 0;
-                Debug.WriteLine("File was not found or is invalid");
+                log_message("File was not found or is invalid");
 
             }
 
@@ -187,7 +187,7 @@ namespace File_test_server.workers
 
             Socket s = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp);
             //Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            Debug.WriteLine(target);
+            log_message(target.ToString());
             s.DualMode = true;
             s.SendTo(j_bytes, target);
             s.Close();
@@ -206,9 +206,9 @@ namespace File_test_server.workers
 
         public void prepare_transfer_data()
         {
-            Debug.WriteLine("Creating client querier");
+            log_message("Creating client querier");
             var qr = owner.create_querier_worker(data, received_hash, rcv_client_code);
-            Debug.WriteLine("Awaiting client confirmation");
+            log_message("Awaiting client confirmation");
             byte[] bytes = udp_agent.Receive(ref trash);
 
 
@@ -217,8 +217,8 @@ namespace File_test_server.workers
 
             //Thread.Sleep(200);
             qr.Wait();
-            Debug.WriteLine("Beggining file transfer");
-            Debug.WriteLine(target);
+            log_message("Beggining file transfer");
+            log_message(target.ToString());
             sv_file_state = server_file_state.transfer_file;
         }
 
@@ -226,17 +226,17 @@ namespace File_test_server.workers
         public void send_packets()
         {
 
-            Debug.WriteLine("Sending packets !");
+            log_message("Sending packets !");
             foreach (s_packet packet in packets_to_send.GetConsumingEnumerable())
             {
                 //Debug.WriteLine("Sending packet!");
-                Debug.WriteLine(target.ToString());
+                log_message(target.ToString());
                 udp_agent.Send(packet.data, packet.size, target);
                 ArrayPool<byte>.Shared.Return(packet.data);
                 //Thread.Sleep(1);
             }
 
-            Debug.WriteLine("All packets have been sent !");
+            log_message("All packets have been sent !");
 
 
         }
@@ -537,7 +537,7 @@ namespace File_test_server.workers
                         {
                             if (owner.will_server_do_transfer())
                             {
-                                Debug.WriteLine("Server will transfer alone");
+                                log_message("Server will transfer alone");
                                 var st = start_send_packets();
                                 if (st)
                                 {

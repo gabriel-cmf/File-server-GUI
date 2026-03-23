@@ -85,5 +85,16 @@ namespace File_test_server_gui.workers
             udp_agent.Dispose();
 
         }
+
+        public void log_message(string msg)
+        {
+            Debug.WriteLine(msg);
+
+            if (owner != null)
+            {
+                owner.add_log_msg(msg);
+            }
+
+        }
     }
 }

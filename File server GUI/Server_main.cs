@@ -63,7 +63,8 @@ public class Server_main
 
 
 
-        udp_agent.Client.Bind(new IPEndPoint(get_ipv6_adress(), listenPort));
+        //udp_agent.Client.Bind(new IPEndPoint(get_ipv6_adress(), listenPort));
+        udp_agent.Client.Bind(new IPEndPoint(IPAddress.IPv6Any, listenPort));
         workerList = new();
         client_upd_ports = new();
         tasks = new();
@@ -598,7 +599,7 @@ public class Server_main
         return iep.Address.ToString();
     }
 
-    public string get_endpoint()
+    public string get_endpoint2()
     {
         EndPoint? local_endpoint = udp_agent.Client.LocalEndPoint;
         if (local_endpoint == null) 
@@ -609,6 +610,20 @@ public class Server_main
         
         IPEndPoint iep = (IPEndPoint)local_endpoint;
         return iep.ToString();
+    }
+
+    public string get_endpoint()
+    {
+        var host = Dns.GetHostEntry(Dns.GetHostName());
+        foreach (var ip in host.AddressList)
+        {
+            if (ip.AddressFamily == AddressFamily.InterNetwork)
+            {
+                return new IPEndPoint(ip, listenPort).ToString();
+            }
+        }
+
+        return "";
     }
 
     public string get_main_port()
