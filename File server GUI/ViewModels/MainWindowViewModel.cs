@@ -36,8 +36,8 @@ namespace File_server_GUI.ViewModels
             sm = s ?? throw new ArgumentNullException(nameof(s));
             client_observables = new();
             file_reg_observables = new();
-            fri_backup= new();
-            main_window=null;
+            fri_backup = new();
+            main_window = null;
             filter_str = string.Empty;
         }
 
@@ -50,19 +50,19 @@ namespace File_server_GUI.ViewModels
         {
             file_reg_observables.Clear();
 
-            if(String.IsNullOrWhiteSpace(query))
+            if (String.IsNullOrWhiteSpace(query))
             {
-                foreach(File_registry_info fri in fri_backup)
+                foreach (File_registry_info fri in fri_backup)
                 {
                     file_reg_observables.Add(fri);
-                    
+
                 }
                 return;
             }
 
             var res = fri_backup.Where(x => x.Full_name.Contains(query, StringComparison.OrdinalIgnoreCase));
 
-            foreach(File_registry_info fri in res)
+            foreach (File_registry_info fri in res)
             {
                 file_reg_observables.Add(fri);
             }
@@ -73,14 +73,14 @@ namespace File_server_GUI.ViewModels
         {
 
             File_registry fr;
-            if(!fri.owner.TryGetTarget(out fr))
+            if (!fri.owner.TryGetTarget(out fr))
             {
                 throw new ArgumentNullException(nameof(fri));
                 return;
             }
 
             var er = fr ?? throw new ArgumentNullException(nameof(fr));
-            var fam = new File_edit_Model(fr) ;
+            var fam = new File_edit_Model(fr);
             /*bool changed = Dispatcher.UIThread.InvokeAsync(async () => {
 
             
@@ -88,7 +88,7 @@ namespace File_server_GUI.ViewModels
 
             }).Result;*/
 
-            
+
 
             var dialog = new File_edit_Window();
             dialog.DataContext = fam;
@@ -98,11 +98,11 @@ namespace File_server_GUI.ViewModels
 
             bool changed = res;
 
-            if (changed) 
+            if (changed)
             {
                 //fr.full_path = fam.Folder_path;
                 fr.change_full_path(fam.Folder_path);
-                
+
                 fr.update_fr_info();
             }
         }
@@ -130,10 +130,10 @@ namespace File_server_GUI.ViewModels
             {
                 Title = "Export file",
                 SuggestedFileName = df_name + ".json"
-                
+
             });
 
-            if (file != null) 
+            if (file != null)
             {
                 Dictionary<string, object> data = new Dictionary<string, object>();
                 data["hash"] = fr.file_hash;
@@ -146,7 +146,7 @@ namespace File_server_GUI.ViewModels
             }
 
 
-            
+
 
 
 
@@ -157,25 +157,36 @@ namespace File_server_GUI.ViewModels
         [RelayCommand]
         public async void Edit_client_balance(Client_observable cob)
         {
-              Client_registry? cr  = null;
-              if(cob.owner.TryGetTarget(out cr))
-              {
-                   Balance_edit_Model bem = new();
-                   bem.new_balance = cr.balance;
-                   Edit_balance_Window ebw = new();
-                   ebw.DataContext = bem;
-                   bool res = await ebw.ShowDialog<bool>(main_window);
+            Client_registry? cr = null;
+            if (cob.owner.TryGetTarget(out cr))
+            {
+                Balance_edit_Model bem = new();
+                bem.new_balance = cr.balance;
+                bem.str_balance = Server_main.bytesize_to_str(cr.balance);
+                Edit_balance_Window ebw = new();
+                ebw.DataContext = bem;
+                bool res = await ebw.ShowDialog<bool>(main_window);
 
 
-                   if(res)
-                   {
-                          cr.balance = bem.new_balance;
-                          cr.update_observable();
-                   }
+                if (res)
+                {
+                    cr.balance = bem.new_balance;
+                    cr.update_observable();
+                }
             }
 
         }
 
+        [RelayCommand]
+        public async void Ban_client(Client_observable cob)
+        {
+            Client_registry? cr = null;
+            if (cob.owner.TryGetTarget(out cr))
+            {
 
+               cr.Set_banned(!cr.banned);
+            }
+
+        }
     }
 }

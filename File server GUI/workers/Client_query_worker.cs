@@ -34,8 +34,17 @@ namespace File_test_server_gui.workers
 
             var j_bytes = Encoding.ASCII.GetBytes(json_dict);
 
-            Console.WriteLine("Possible client udp ports:");
-            Console.WriteLine(owner.client_upd_ports.Count);
+            log_message("Possible client udp ports:");
+            log_message(owner.client_upd_ports.Count.ToString());
+
+            if(owner.client_upd_ports.Count <= 1)
+            {
+                log_message("No clients to query!");
+                return;
+            }
+
+            udp_agent.Client.ReceiveTimeout = 2000;
+            queue_timeout = 2000;
             foreach (IPEndPoint client in owner.client_upd_ports)
             {
                 try
@@ -48,7 +57,8 @@ namespace File_test_server_gui.workers
                     Console.WriteLine("Asking for file:");
                     Console.WriteLine(client.ToString());
                     udp_agent.Send(j_bytes, client);
-                    byte[] r_bytes = udp_agent.Receive(ref trash);
+                    //byte[] r_bytes = udp_agent.Receive(ref trash);
+                    byte[] r_bytes = queque_receive();
                     if (r_bytes != null && r_bytes.Length > 0)
                     {
                         var reps = Server_main.bytes_to_dict(r_bytes);
@@ -68,10 +78,10 @@ namespace File_test_server_gui.workers
 
                 catch
                 {
-
+                    log_message("Client did not respond to query!");
                 }
             }
-            Console.WriteLine("Queried clients for file!");
+            log_message("Queried clients for file!");
 
 
 

@@ -53,13 +53,20 @@ namespace File_server_GUI.Views
 
         protected override void OnClosing(WindowClosingEventArgs e)
         {
+            
+
+            Debug.WriteLine("Closing server");
+            sm.add_log_msg("Closing server");
             sm.save_clients();
             sm.save_files();
+            sm.stop_server();
             base.OnClosing(e);
             
         }
 
         
+
+
 
         public void add_client_observable(Client_observable co)
         {

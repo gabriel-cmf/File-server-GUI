@@ -3,11 +3,12 @@
         xmlns:vm="using:File_server_GUI.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" 
+        SizeToContent="WidthAndHeight"
         x:Class="File_server_GUI.Views.File_add_Window"
         x:DataType="vm:File_add_Model"
         Icon="/Assets/avalonia-logo.ico"
-        Title="File_server_GUI">
+        Title="Add file...">
 
      <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
@@ -15,13 +16,13 @@
         <vm:File_add_Model/>
     </Design.DataContext>
 
-    <StackPanel>
+    <StackPanel Spacing="12" Margin="8,0">
 	  <StackPanel HorizontalAlignment="Stretch" Spacing="12">
 	  <TextBlock Margin="10,10,10,10">Hello!</TextBlock>
           </StackPanel>
 
       <StackPanel Spacing="12" Orientation="Horizontal" HorizontalAlignment="Stretch">
-      <TextBox Margin="10,10,10,10" IsReadOnly="True" Watermark="File folder" HorizontalAlignment="Stretch" Text="{Binding Full_path}"></TextBox>
+      <TextBox Margin="10,10,10,10" IsReadOnly="True" Watermark="File folder               " HorizontalAlignment="Stretch" Text="{Binding Full_path}"></TextBox>
       <Button Margin="10,10,10,10" HorizontalAlignment="Right" Click="Load_file">Choose folder</Button>
            
       </StackPanel>
@@ -31,9 +32,24 @@
             </StackPanel>
         
         <StackPanel Spacing="12" Orientation="Horizontal" HorizontalAlignment="Stretch">
+
+
+        <StackPanel Spacing="12" Orientation="Horizontal" HorizontalAlignment="Stretch">
+                 <TextBlock>Upload multiplier: </TextBlock>
+                 <NumericUpDown Minimum="0" Maximum="10.0" Increment="0.01" Value="{Binding Upload_multiplier}"></NumericUpDown>
+                 </StackPanel>
+        </StackPanel>
+
+         
+         <CheckBox Content="Needs enough balance" IsChecked="{Binding Need_balance}"></CheckBox>
+        
+         <CheckBox Content="Needs enough ratio" IsChecked="{Binding Need_ratio}"></CheckBox>
+        
+        <StackPanel Spacing="12" Orientation="Horizontal" HorizontalAlignment="Stretch">
         <Button Click="Confirm">Apply</Button>
         <Button Click="Cancel">Cancel</Button>
-        </StackPanel>
+            </StackPanel>
+             
     </StackPanel>
 
 

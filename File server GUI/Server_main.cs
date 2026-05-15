@@ -37,34 +37,45 @@ public class Server_main
 {
     public const int listenPort = 3336;
     UdpClient udp_agent;
-    public List<Udp_worker> workerList;
+    public List<Worker_base> workerList;
     public List<IPEndPoint> client_upd_ports;
     public List<Task> tasks;
     public List<IPEndPoint> receiving_upd_ports;
     public List<IPEndPoint> transfer_aux_ports;
     public Dictionary<string, File_registry> available_files;
     public Dictionary<IPAddress, Client_registry> active_clients;
+    public Dictionary<IPEndPoint, Worker_base> worker_acess_dict;
     public Stopwatch keep_alive_timer;
     public HashSet<long> server_filter;
     public byte[] keep_alive_packet;
     public HashSet<int> rcv_client_codes;
     public HashSet<IPAddress> ip_filter;
+    public HashSet<IPEndPoint> worker_filter;
     public MainWindow main_window;
     public static string geodb_path = "GeoLite2-Country.mmdb";
+    public static string geodb_path2 = "GeoLite2-City.mmdb";
     public static readonly string[] size_suff = { "B", "KB", "MB", "GB", "TB", "PB", "EB" };
     public Logger_worker log_work;
     public Queue<IPEndPoint> file_listing_queue;
+    public IPEndPoint dummy_iep;
 
 
     public Server_main()
     {
         udp_agent = new UdpClient(AddressFamily.InterNetworkV6);
         udp_agent.Client.DualMode = true;
-
-
+        udp_agent.Client.SetSocketOption(SocketOptionLevel.Socket,SocketOptionName.ReuseAddress,true);
+        
+        udp_agent.ExclusiveAddressUse = false;
+        
 
         //udp_agent.Client.Bind(new IPEndPoint(get_ipv6_adress(), listenPort));
         udp_agent.Client.Bind(new IPEndPoint(IPAddress.IPv6Any, listenPort));
+        udp_agent.Client.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.MulticastLoopback, true);
+        //udp_agent.JoinMulticastGroup(IPAddress.Parse("FF02::1234"));
+
+
+        dummy_iep = new IPEndPoint(IPAddress.IPv6Any, listenPort);
         workerList = new();
         client_upd_ports = new();
         tasks = new();
@@ -73,12 +84,14 @@ public class Server_main
 
         available_files = new();
         server_filter = new();
+        worker_filter = new();
+        worker_acess_dict = new();
         rcv_client_codes = new();
         main_window = null;
         active_clients = new();
         ip_filter = new();
         string day = DateTime.Now.ToString("yyyy-MM-dd");
-        log_work = new(this, "logs\\" + day + ".txt");
+        log_work = new(this, "logs/" + day + ".txt");
         file_listing_queue = new();
 
         BsonMapper.Global.RegisterType<IPAddress>(
@@ -103,7 +116,7 @@ public class Server_main
             }
 
             var clients = db.GetCollection<Client_registry>("clients");
-            clients.DeleteAll();
+            
             if (clients.Count() > 0)
             {
                 Debug.WriteLine("Clients found in db");
@@ -139,7 +152,6 @@ public class Server_main
         add_log_msg(get_main_ip().ToString());
 
     }
-
 
     public IPAddress get_ipv6_adress()
     {
@@ -351,15 +363,33 @@ public class Server_main
             {
                 bytes = udp_agent.Receive(ref groupEP);
             }
-            catch
+            catch(Exception e)
             {
                 Debug.WriteLine("Listener timeout");
                 add_log_msg("Listener timeout");
+                add_log_msg(e.Message);
                 Thread.Sleep(0);
 
             }
 
+            if(worker_filter.Contains(groupEP))
+            {
+                Debug.WriteLine("Message ment for worker caught");
+                log_work.add_msg("Message ment for worker caught");
 
+                bool new_add = worker_acess_dict.TryAdd(groupEP, null);
+                if(!new_add && bytes.Length > 0)
+                {
+                    worker_acess_dict[groupEP].add_packet(bytes);
+                }
+                else
+                {
+                    Debug.WriteLine("Worker not found for endpoint");
+                    log_work.add_msg("Worker not found for endpoint");
+                }
+                
+                bytes = Array.Empty<byte>();
+            }
 
 
             string b_st = Encoding.ASCII.GetString(bytes, 0, bytes.Length);
@@ -405,9 +435,15 @@ public class Server_main
                 {
                     case (client_message_type.wakeup):
                         {
-                            Console.WriteLine("Received a wakeup message from client");
-                            Console.WriteLine(client_upd_ports.Last());
+                            Debug.WriteLine("Received a wakeup message from client");
+                            Debug.WriteLine(client_upd_ports.Last());
 
+
+                            Dictionary<string, object> wra = new();
+                            wra["type"] = 0;
+                            var j_bytes = dict_to_bytes(wra);
+
+                            udp_agent.Send(j_bytes, groupEP);
 
 
 
@@ -417,10 +453,19 @@ public class Server_main
 
                     case (client_message_type.file_request):
                         {
-                            Console.WriteLine("Beggining file negotiations with");
-                            Console.WriteLine(client_upd_ports.Last());
+
+                            add_log_msg("Received endpoint:");
+                            add_log_msg(groupEP.ToString());
+
+
+                            Debug.WriteLine("Beggining file negotiations with");
+                            Debug.WriteLine(client_upd_ports.Last());
+
+                            add_log_msg("Beggining file negotiations with:");
+                            add_log_msg(client_upd_ports.Last().ToString());
 
                             receiving_upd_ports.Add(groupEP);
+                            worker_filter.Add(groupEP);
 
                             create_fileresp_worker(dict, groupEP, client_code);
                             dict["type"] = 0;
@@ -482,24 +527,36 @@ public class Server_main
             }
 
             client_busy = false;
-
-            foreach (Task t in tasks)
+            int it = 0;
+            
+            while(it < tasks.Count && tasks.Count >0)
             {
-                if (t.IsCompleted)
+                if (tasks[it].IsCompleted)
                 {
-                    t.Dispose();
-                    //tasks.Remove(t);
+                    //tasks[it].Dispose();
+                    tasks.RemoveAt(it);
+                }
+                else
+                {
+                    it++;
                 }
             }
 
+            
 
-            if (keep_alive_timer.ElapsedMilliseconds >= 30000)
+          
+
+
+            if (keep_alive_timer.ElapsedMilliseconds >= 5000)
             {
                 Console.WriteLine("Sending keep-alives");
                 foreach (IPEndPoint client in client_upd_ports)
                 {
                     udp_agent.Send(keep_alive_packet, client);
                 }
+
+               
+
                 keep_alive_timer.Restart();
             }
 
@@ -540,13 +597,15 @@ public class Server_main
 
     public void create_fileresp_worker(Dictionary<string, object>? dict, IPEndPoint tg, long client_code = 0)
     {
+
+        add_log_msg("Creating file response worker");
         if (dict == null) { return; }
         File_transfer_worker uw = new File_transfer_worker(this);
         string rcv_hash = (string)dict["hash"];
         uw.received_hash = rcv_hash;
         uw.rcv_client_code = client_code;
         uw.file_size = available_files[rcv_hash].filesize;
-
+        worker_filter.Add(tg);
 
 
         uw.target = tg;
@@ -557,9 +616,11 @@ public class Server_main
         uw.complete_file_path = comp;*/
         //uw.objective = worker_tasks.transfer_file;
         uw.data = dict;
-
+        workerList.Add(uw);
+        worker_acess_dict[tg] = uw;
         Task worker_task = Task.Factory.StartNew(() => { uw.pair_up(); });
         tasks.Add(worker_task);
+        add_log_msg("File response worker created");
 
 
     }
@@ -667,7 +728,40 @@ public class Server_main
         log_work.add_msg(msg);
     }
 
+    public long get_client_balance(IPAddress ipa)
+    {
+        return active_clients[ipa].balance;
+    }
+
+    public double get_client_ratio(IPAddress ipa)
+    {
+        return active_clients[ipa].client_ob.Ratio;
+    }
+
+    public bool is_client_banned(IPAddress ipa)
+    {
+        return active_clients[ipa].banned;
+    }
+
+    public void stop_server()
+    {
+      
+        udp_agent.Close();
+    }
+
+    public void remove_client(IPEndPoint iep)
+    {
+        worker_filter.Remove(iep);
+    }
+
+    public void remove_worker(IPEndPoint iep)
+    {
+        //worker_filter.Remove(iep);
+        worker_acess_dict.Remove(iep);
+    }
+
 
 
 
 }
+

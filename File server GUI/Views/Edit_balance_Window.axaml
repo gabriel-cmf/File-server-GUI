@@ -7,7 +7,7 @@
         x:Class="File_server_GUI.Views.Edit_balance_Window"
         x:DataType="vm:Balance_edit_Model"
         Icon="/Assets/avalonia-logo.ico"
-        Title="File_server_GUI">
+        Title="Choose a value...">
 
       <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
@@ -15,8 +15,8 @@
         <vm:Balance_edit_Model/>
     </Design.DataContext>
 
-    <StackPanel>
-		<TextBlock>New balance: </TextBlock>
+    <StackPanel Spacing="12" Margin="8,0">
+		<TextBlock>Value: </TextBlock>
          <StackPanel Orientation="Horizontal">
              <TextBox Text="{Binding Str_balance}" IsReadOnly="True"></TextBox>
              <Button Click="Reset_balance">reset</Button>

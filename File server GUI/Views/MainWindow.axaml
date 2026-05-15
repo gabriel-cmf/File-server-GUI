@@ -15,7 +15,15 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    	<DockPanel>
+
+<Window.Styles>
+    <Style Selector="DataGrid TextBlock">
+        <Setter Property="FontSize" Value="16" />
+    
+    </Style>
+</Window.Styles>
+
+<DockPanel>
 		<Menu DockPanel.Dock="Top">
         
         <MenuItem Header="Server">
@@ -45,15 +53,18 @@
     
 	<TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
     <DataGrid Margin="20" ItemsSource="{Binding client_observables}" 
-            IsReadOnly="True" 
+            IsReadOnly="True"
+            
+            
            GridLinesVisibility="All"
              BorderThickness="1" BorderBrush="Gray">
         <DataGrid.Columns>
             <DataGridTextColumn Header="Country"  Binding="{Binding Flag}"/>
             <DataGridTextColumn Header="Ip adress"  Binding="{Binding Ip_adress}"/>
             <DataGridTextColumn Header="Online"  Binding="{Binding Online}"/>
-            <DataGridTextColumn Header="Balance"  Binding="{Binding Balance}"/>
+            <DataGridTextColumn Header="Balance"  Binding="{Binding Formt_balance}"/>
             <DataGridTextColumn Header="Ratio"  Binding="{Binding Ratio}"/>
+            <DataGridCheckBoxColumn Header="Banned"  Binding="{Binding Banned}"/>
         </DataGrid.Columns>
         <DataGrid.Styles>
 					  <Style Selector="DataGridRow">
@@ -64,7 +75,9 @@
 											Command="{Binding $parent[DataGrid].DataContext.Edit_client_balanceCommand}"
 											CommandParameter="{Binding}" />
 
-								  
+								  <MenuItem Header="Ban/Unban client"
+											Command="{Binding $parent[DataGrid].DataContext.Ban_clientCommand}"
+											CommandParameter="{Binding}" />
 
 							  </ContextMenu>
 						  </Setter>
@@ -82,7 +95,7 @@
           <StackPanel>
               <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 			  <TextBox Text="{Binding Filter_str}"></TextBox>
-              <DataGrid Margin="20" ItemsSource="{Binding file_reg_observables}" 
+              <DataGrid Margin="22"  FontSize="8"  ItemsSource="{Binding file_reg_observables}" 
             IsReadOnly="True" 
            GridLinesVisibility="All"
              BorderThickness="1" BorderBrush="Gray">

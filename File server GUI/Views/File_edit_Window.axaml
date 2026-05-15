@@ -16,8 +16,8 @@
     </Design.DataContext>
 
     <StackPanel>
-	  <StackPanel HorizontalAlignment="Stretch" Spacing="12">
-	  <TextBlock Margin="10,10,10,10">Hello!</TextBlock>
+	  <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Spacing="12">
+	  <TextBlock Margin="10,10,10,10">File edit</TextBlock>
           </StackPanel>
 
       <StackPanel Spacing="12" Orientation="Horizontal" HorizontalAlignment="Stretch">

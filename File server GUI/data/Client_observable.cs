@@ -22,7 +22,13 @@ namespace File_server_GUI.data
         private long balance;
 
         [ObservableProperty]
+        private string formt_balance;
+
+        [ObservableProperty]
         private double ratio;
+
+        [ObservableProperty]
+        private bool banned;
 
         public WeakReference<Client_registry> owner;
 
@@ -33,6 +39,7 @@ namespace File_server_GUI.data
             online = false;
             balance = 0;
             ratio = 0;
+            formt_balance = String.Empty;
             owner = new WeakReference<Client_registry>(cr);
         }
     }

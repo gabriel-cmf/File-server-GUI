@@ -94,7 +94,7 @@ namespace File_server_GUI.Views
                         var file = await folder.GetFileAsync(Fa_model.Full_file_name);
                         file_found = true;
 
-                        string complete_path = f_path + "\\" + Fa_model.Full_file_name;
+                        string complete_path = f_path + "/" + Fa_model.Full_file_name;
                         Debug.WriteLine(complete_path);
                         string file_hash = Server_main.generate_incremental_hash(complete_path);
 

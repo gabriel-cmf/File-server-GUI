@@ -1,4 +1,5 @@
-﻿using File_server_GUI.data;
+﻿using Avalonia.Logging;
+using File_server_GUI.data;
 using LiteDB;
 using System;
 using System.Collections.Generic;
@@ -20,6 +21,11 @@ namespace File_test_server_gui.data
         public string type { get; set; }
         public long filesize { get; set; }
         public float upload_bonus;
+        public long required_credit;
+        public float required_ratio;
+
+        public bool ignore_credit;
+        public bool ignore_ratio;
 
         [BsonIgnore]
         public File_registry_info fr_info;
@@ -30,6 +36,10 @@ namespace File_test_server_gui.data
             upload_bonus = 1.0f;
             file_hash = file_name = full_path = path = type = "";
             fr_info = new(this);
+            required_credit = 0;
+            required_ratio = 0;
+            ignore_credit = ignore_ratio = true;
+
         }
 
 

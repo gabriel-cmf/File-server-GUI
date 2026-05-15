@@ -1,4 +1,5 @@
 ﻿using Avalonia.Controls.Shapes;
+using Avalonia.Media.TextFormatting.Unicode;
 using File_server_GUI.data;
 using File_test_server_gui.data;
 using File_test_server_gui.workers;
@@ -67,7 +68,12 @@ namespace File_test_server.workers
             packet_costs = 0;
             file_size = 0;
             client_sent_packets = new();
-            udp_agent.AllowNatTraversal(true);
+
+            if (OperatingSystem.IsWindows())
+            {
+                udp_agent.AllowNatTraversal(true);
+            }
+                
         }
 
         public int get_max_packet()
@@ -150,30 +156,74 @@ namespace File_test_server.workers
             Dictionary<string, object> data = new();
             data["type"] = 2;
 
-
+            bool valid = true;
             if (fr != null && fr.is_valid())
             {
-                data["found"] = true;
-                data["filesize"] = fr.filesize;
-                complete_file_path = fr.full_path;
-                data["packets"] = packets_needed(complete_file_path);
-                data["file_name"] = fr.file_name;
-                data["file_ext"] = fr.type;
-                /*string hash_st = "";
-                using (FileStream fs = new FileStream(complete_file_path, FileMode.Open, FileAccess.Read))
 
+                
+                //Client does not have enough credit to download the file
+                if ( !fr.ignore_credit && owner.get_client_balance(target.Address) < fr.required_credit)
                 {
-                    byte[] h_bytes = SHA256.HashData(fs);
+                    data["found"] = false;
+                    data["filesize"] = 0;
+                    data["packets"] = 0;
+                    data["reason"] = 1;
+                    log_message("File was found, but client does not have enough credit");
+                    valid = false;
 
-                    hash_st = Convert.ToHexString(h_bytes);
                 }
-                data["hash"] = hash_st;*/
+
+                if (!fr.ignore_ratio && owner.get_client_ratio(target.Address) < fr.required_ratio)
+                {
+                    data["found"] = false;
+                    data["filesize"] = 0;
+                    data["packets"] = 0;
+                    data["reason"] = 2;
+                    log_message("File was found, but client does not have a suficient ratio");
+                    valid = false;
+
+                }
+
+                if (owner.is_client_banned(target.Address))
+                {
+                    data["found"] = false;
+                    data["filesize"] = 0;
+                    data["packets"] = 0;
+                    data["reason"] = 3;
+                    log_message("File was found, but client is banned");
+                    valid = false;
+
+                }
+
+
+
+                if (valid)
+                {
+                    data["found"] = true;
+                    data["filesize"] = fr.filesize;
+                    complete_file_path = fr.full_path;
+                    data["packets"] = packets_needed(complete_file_path);
+                    data["file_name"] = fr.file_name;
+                    data["file_ext"] = fr.type;
+                    data["reason"] = 0;
+                    /*string hash_st = "";
+                    using (FileStream fs = new FileStream(complete_file_path, FileMode.Open, FileAccess.Read))
+
+                    {
+                        byte[] h_bytes = SHA256.HashData(fs);
+
+                        hash_st = Convert.ToHexString(h_bytes);
+                    }
+                    data["hash"] = hash_st;*/
+                }
             }
             else
             {
+                valid = false;
                 data["found"] = false;
                 data["filesize"] = 0;
                 data["packets"] = 0;
+                data["reason"] = 0;
                 log_message("File was not found or is invalid");
 
             }
@@ -184,15 +234,20 @@ namespace File_test_server.workers
             var j_bytes = Encoding.ASCII.GetBytes(json_dict);
 
             //IPEndPoint return_ip = new IPEndPoint(Dns.GetHostAddresses(Dns.GetHostName())[0], listenPort - 1);
-
-            Socket s = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp);
             //Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+
+            /*Socket s = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp);
+            
             log_message(target.ToString());
             s.DualMode = true;
             s.SendTo(j_bytes, target);
-            s.Close();
+            s.Close();*/
+            log_message("Target adress");
+            log_message(target.ToString());
+            udp_agent.Send(j_bytes, target);
 
-            if ((bool)data["found"] == true)
+            if ((bool)data["found"] == true && valid)
             {
                 sv_file_state = server_file_state.file_found;
             }
@@ -204,12 +259,56 @@ namespace File_test_server.workers
 
         }
 
+
+        public byte[] keep_alive_wait()
+        {
+            Task<UdpReceiveResult> task = udp_agent.ReceiveAsync();
+            Stopwatch timer = new();
+            timer.Start();
+
+            byte[] ack_bytes = Encoding.ASCII.GetBytes("K");
+            byte[] bytes = Array.Empty<byte>();
+
+            while (!task.IsCompleted && !task.IsFaulted)
+            {
+                if(timer.ElapsedMilliseconds >500)
+                {
+                    timer.Stop();
+                    udp_agent.SendAsync(ack_bytes, target);
+                    timer.Restart();
+                }
+                Thread.Sleep(0);
+            }
+
+            
+            if (task.IsCompleted)
+            {
+                bytes = task.Result.Buffer;
+            }
+            
+            return bytes;
+        }
+
         public void prepare_transfer_data()
         {
             log_message("Creating client querier");
             var qr = owner.create_querier_worker(data, received_hash, rcv_client_code);
             log_message("Awaiting client confirmation");
-            byte[] bytes = udp_agent.Receive(ref trash);
+            udp_agent.Client.ReceiveTimeout = 10000;
+
+
+            //byte[] bytes = udp_agent.Receive(ref trash);
+            //byte[] bytes = keep_alive_wait();
+            byte[] bytes = queque_receive();
+
+            if (bytes.Length <= 0)
+            {
+                log_message("Client did not respond in time, aborting transfer");
+                sv_file_state = server_file_state.done;
+                return;
+            }
+
+            log_message("Keep alive wait done");
 
 
 
@@ -230,10 +329,10 @@ namespace File_test_server.workers
             foreach (s_packet packet in packets_to_send.GetConsumingEnumerable())
             {
                 //Debug.WriteLine("Sending packet!");
-                log_message(target.ToString());
+                //log_message(target.ToString());
                 udp_agent.Send(packet.data, packet.size, target);
                 ArrayPool<byte>.Shared.Return(packet.data);
-                //Thread.Sleep(1);
+                Thread.Sleep(1);
             }
 
             log_message("All packets have been sent !");
@@ -275,9 +374,13 @@ namespace File_test_server.workers
                     byte[] order_bytes = BitConverter.GetBytes(offset);
                     byte[] sum_bytes = BitConverter.GetBytes(i);
 
+
+                    int data_min = Math.Min(buffer.Length, ps);
+
                     Array.Copy(order_bytes, 0, packet, 0, 8);
                     Array.Copy(sum_bytes, 0, packet, 8, 8);
-                    Array.Copy(buffer, 0, packet, header_size, buffer.Length);
+                    Array.Copy(buffer, 0, packet, header_size, data_min);
+                    //log_message("Packet data size 3: " + data_min.ToString());
 
                     /*s_packet sp = new s_packet();
                     sp.size = ps;
@@ -361,8 +464,13 @@ namespace File_test_server.workers
                     sp.data = packet;
 
 
-                    packets_to_send.Add(sp);
+                    /*if(a==98)
+                    {
+                        log_message("Packet data size 2: " + Math.Max(i,bi).ToString());
+                    }*/
+                    //Test
 
+                    packets_to_send.Add(sp);
                     /*if (a!= 33)
                     {
                         packets_to_send.Add(sp);
@@ -450,7 +558,8 @@ namespace File_test_server.workers
             bool finish = false;
             while (!finish)
             {
-                byte[] bytes = udp_agent.Receive(ref trash);
+                //byte[] bytes = udp_agent.Receive(ref trash);
+                byte[] bytes = queque_receive();
                 Dictionary<string, object>? dict = Server_main.bytes_to_dict(bytes);
                 if (dict != null)
                 {
@@ -487,7 +596,8 @@ namespace File_test_server.workers
 
 
             sv_file_state = server_file_state.done;
-
+            owner.remove_client(target);
+            owner.remove_worker(target);
             //long length = new System.IO.FileInfo(filepath).Length;
 
             owner.subtract_balance(target.Address,file_size);

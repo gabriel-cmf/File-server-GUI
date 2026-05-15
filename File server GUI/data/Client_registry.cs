@@ -29,6 +29,9 @@ namespace File_server_GUI.data
 
         public bool online { get; set; }
 
+
+        public bool banned { get; set; }
+
         [BsonIgnore]
         public Client_observable client_ob;
 
@@ -45,6 +48,7 @@ namespace File_server_GUI.data
                first_contact_date = DateTime.Now;
                coords=new(0,0);
                know_files = new();
+            banned = false;
 
         }
 
@@ -82,6 +86,12 @@ namespace File_server_GUI.data
             find_country();
         }
 
+        public void Set_banned(bool val)
+        {
+            banned = val;
+            client_ob.Banned = banned;
+        }
+
         public void find_country()
         {
             using (var reader = new DatabaseReader(Server_main.geodb_path))
@@ -90,16 +100,33 @@ namespace File_server_GUI.data
                 {
                     
                     var country = reader.Country(ip_adress);
-                    var city =  reader.City(ip_adress);
+                   
                     var cf = country.RepresentedCountry.IsoCode;
                     client_ob.Flag = cf ?? string.Empty;
+                    
+                }
+                catch (MaxMind.GeoIP2.Exceptions.AddressNotFoundException)
+                {
+                    Debug.WriteLine("Could not find country address");
+                }
+            }
+
+            using (var reader = new DatabaseReader(Server_main.geodb_path2))
+            {
+                try
+                {
+
+                   
+                    var city = reader.City(ip_adress);
+                    
+                    
                     double lat = city.Location.Latitude ?? 0;
                     double lon = city.Location.Longitude ?? 0;
                     coords = new(lat, lon);
                 }
                 catch (MaxMind.GeoIP2.Exceptions.AddressNotFoundException)
                 {
-                    Debug.WriteLine("Could not find address");
+                    Debug.WriteLine("Could not find city address");
                 }
             }
         }
@@ -142,6 +169,7 @@ namespace File_server_GUI.data
 
             
             client_ob.Balance = balance;
+            client_ob.Formt_balance = Server_main.bytesize_to_str(balance);
             client_ob.Ip_adress = ip_adress.ToString();
             update_ratio();
 

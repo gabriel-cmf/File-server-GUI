@@ -49,8 +49,11 @@ namespace File_server_GUI.workers
             state=0;
             write_started= false;
             state = storage_state.receive;
-
-            udp_agent.AllowNatTraversal(true);
+            if (OperatingSystem.IsWindows())
+            {
+                udp_agent.AllowNatTraversal(true);
+            }
+                
             udp_agent.Client.ReceiveBufferSize = 1024 * 1024 * 2;
             udp_agent.Client.ReceiveTimeout = 3000;
         }
