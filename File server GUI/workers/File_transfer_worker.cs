@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -53,9 +54,15 @@ namespace File_test_server.workers
         public string complete_file_path;
         public string received_hash;
         public long file_size;
+        public Transfer_registry? transfer_registry;
         public List<long> client_sent_packets;
         public Dictionary<string, object> data;
         public BlockingCollection<s_packet> packets_to_send;
+        public bool peers_sorted;
+
+
+        //For when the cliente asks to continue a transfer after a failed attempt or to ask for specific packets
+        public bool partial_mode;
 
         public File_transfer_worker(Server_main ow) : base(ow)
         {
@@ -68,6 +75,9 @@ namespace File_test_server.workers
             packet_costs = 0;
             file_size = 0;
             client_sent_packets = new();
+            transfer_registry=null;
+            partial_mode=false;
+            peers_sorted = false;
 
             if (OperatingSystem.IsWindows())
             {
@@ -199,6 +209,7 @@ namespace File_test_server.workers
 
                 if (valid)
                 {
+
                     data["found"] = true;
                     data["filesize"] = fr.filesize;
                     complete_file_path = fr.full_path;
@@ -249,6 +260,7 @@ namespace File_test_server.workers
 
             if ((bool)data["found"] == true && valid)
             {
+                file_size = owner.available_files[received_hash].filesize;
                 sv_file_state = server_file_state.file_found;
             }
             else
@@ -259,6 +271,15 @@ namespace File_test_server.workers
 
         }
 
+
+        public void create_transfer_reg()
+        {
+            transfer_registry = new Transfer_registry();
+            transfer_registry.target = target;
+            transfer_registry.hash = received_hash;
+            transfer_registry.path = complete_file_path;
+            owner.add_transfer_registry(transfer_registry);
+        }
 
         public byte[] keep_alive_wait()
         {
@@ -289,13 +310,17 @@ namespace File_test_server.workers
             return bytes;
         }
 
+
         public void prepare_transfer_data()
         {
             log_message("Creating client querier");
-            var qr = owner.create_querier_worker(data, received_hash, rcv_client_code);
+
+
+
+            var qr = owner.create_querier_worker(data, received_hash, target, rcv_client_code);
             log_message("Awaiting client confirmation");
             udp_agent.Client.ReceiveTimeout = 10000;
-
+            queue_timeout = 60000;
 
             //byte[] bytes = udp_agent.Receive(ref trash);
             //byte[] bytes = keep_alive_wait();
@@ -310,7 +335,7 @@ namespace File_test_server.workers
 
             log_message("Keep alive wait done");
 
-
+            create_transfer_reg();
 
             //split_packets2(complete_file_path);
 
@@ -326,13 +351,20 @@ namespace File_test_server.workers
         {
 
             log_message("Sending packets !");
+            int reps = 0;
+            bool linux = OperatingSystem.IsLinux() || OperatingSystem.IsMacOS();
             foreach (s_packet packet in packets_to_send.GetConsumingEnumerable())
             {
                 //Debug.WriteLine("Sending packet!");
                 //log_message(target.ToString());
                 udp_agent.Send(packet.data, packet.size, target);
                 ArrayPool<byte>.Shared.Return(packet.data);
-                Thread.Sleep(1);
+                reps++;
+                if(linux && reps % 25 ==0)
+                {
+                    Thread.Sleep(1);
+                }
+                
             }
 
             log_message("All packets have been sent !");
@@ -392,6 +424,7 @@ namespace File_test_server.workers
 
                     packet_costs += ps;
 
+
                     ArrayPool<byte>.Shared.Return(packet);
 
 
@@ -399,6 +432,16 @@ namespace File_test_server.workers
                 }
             }
         }
+
+
+        public void make_packet_range(string filepath, long start,long end)
+        {
+            for (long i= start; i < end; i++)
+            {
+                make_single_packet(filepath, i);
+            }
+        }
+
 
         public void split_packets(string filepath)
         {
@@ -410,7 +453,7 @@ namespace File_test_server.workers
             int mp = get_max_packet();
             long data_space = mp - (long_size.Length * 2);
 
-
+            log_message("Data space length: " + data_space);
             //byte[] file_bytes = System.IO.File.ReadAllBytes(filepath);
             byte[] buffer = new byte[data_space];
 
@@ -471,7 +514,8 @@ namespace File_test_server.workers
                     //Test
 
                     packets_to_send.Add(sp);
-                    /*if (a!= 33)
+
+                    /*if (a!= 33 && a != 34)
                     {
                         packets_to_send.Add(sp);
                     }
@@ -481,23 +525,26 @@ namespace File_test_server.workers
                         Console.WriteLine(file_pos);
                         Console.WriteLine(fs.Position);
                     }*/
-
                     a++;
                     file_pos += remaining_bytes;
+
 
 
                     //packets_to_send2.Add(packet);
                     //remaining_bytes -= (packet.Length - 16);
                 }
+
+                log_message("File read done");
+                log_message(a.ToString());
             }
 
 
-            Console.WriteLine("All packets have been made !");
+            Debug.WriteLine("All packets have been made !");
             packets_to_send.CompleteAdding();
             send_task.Wait();
 
-            Console.WriteLine("Remaining_bytes");
-            Console.WriteLine(remaining_bytes);
+            Debug.WriteLine("Remaining_bytes");
+            Debug.WriteLine(remaining_bytes);
 
             sv_file_state = server_file_state.wait_confirmation;
 
@@ -508,12 +555,14 @@ namespace File_test_server.workers
         public void ask_clients_to_transer()
         {
 
+            log_message("Clients will be asked to transfer");
             int cnt = owner.transfer_aux_ports.Count;
             long packet_mod = packet_num % cnt;
             long packets_per_client = (packet_num + packet_mod) / cnt;
 
 
-            owner.transfer_aux_ports.OrderBy((x) => 
+            log_message("Total packets: " + packet_num);
+            /*owner.transfer_aux_ports.OrderBy((x) => 
             {
                 Client_registry cra = owner.get_c_registry(x);
                 //Client_registry crb = owner.get_c_registry(b);
@@ -524,17 +573,21 @@ namespace File_test_server.workers
                 return  dista;
             }
             
-            );
+            );*/
             for (int a = 0; a < cnt; a++)
             {
                 long max = packets_per_client * (a + 1);
-                max = Math.Min(max, packet_num);
+                max = Math.Min(max, packet_num+1);
                 IPEndPoint aux = owner.transfer_aux_ports[a];
+
+                log_message("Calling ip: " + aux.ToString());
 
                 Dictionary<string, object> resp = new();
                 resp["target"] = target.ToString();
                 resp["begin"] = a * packets_per_client;
                 resp["end"] = max;
+
+                log_message("Client will send packet " + resp["begin"].ToString() + " to packet " + resp["end"].ToString());
 
                 //Console.WriteLine("Begin index" + $"{resp["begin"]}");
                 //Console.WriteLine("end index" +  $"{resp["end"]}");
@@ -542,7 +595,14 @@ namespace File_test_server.workers
                 byte[] conv_byte = Server_main.dict_to_bytes(resp);
 
                 udp_agent.Send(conv_byte, aux);
-                client_sent_packets.Add(max - (a * packets_per_client)); 
+                client_sent_packets.Add(max - (a * packets_per_client));
+                owner.worker_filter.Add(aux);
+                byte[] conf = queque_receive();
+                if(conf == null || conf.Length <= 0)
+                {
+                    log_message("Error, queried client did not confirm");
+                }
+                owner.worker_filter.Remove(aux);
 
             }
 
@@ -554,28 +614,34 @@ namespace File_test_server.workers
 
         public void wait_confirm()
         {
-            Console.WriteLine("Waiting for client confirmation");
+            log_message("Waiting for client confirmation");
             bool finish = false;
+            queue_timeout = 6000;
             while (!finish)
             {
                 //byte[] bytes = udp_agent.Receive(ref trash);
                 byte[] bytes = queque_receive();
+                if(bytes == null || bytes.Length == 0) { continue; }
                 Dictionary<string, object>? dict = Server_main.bytes_to_dict(bytes);
                 if (dict != null)
                 {
                     bool state = (bool)dict["done"];
-                    if (state) { finish = true; break; }
+                    if (state) 
+                    { finish = true; break; }
 
-                    long pos = (long)dict["pos"];
+                    long start = (long)dict["start"];
+                    long end = (long)dict["end"];
 
 
                     if (owner.will_server_do_transfer())
                     {
-                        make_single_packet(complete_file_path, pos);
+
+                        log_message("Server will send the missing packets");
+                        make_packet_range(complete_file_path, start, end);
                     }
                     else
                     {
-
+                        log_message("Requesting client to resend");
                         IPEndPoint cl = owner.transfer_aux_ports[0];
                         udp_agent.Send(bytes, cl);
 
@@ -586,18 +652,34 @@ namespace File_test_server.workers
 
 
                 }
-
+                else
+                {
+                   if(!owner.worker_filter.Contains(target))
+                   {
+                        owner.worker_filter.Add(target);
+                        owner.worker_acess_dict[target] = this;
+                   }
+                }
                 Thread.Sleep(0);
 
             }
 
-            Console.WriteLine("Client has confirmed sucessful file transfer !");
+            log_message("Client has confirmed sucessful file transfer !");
 
+            Dictionary<string, object> confm = new();
+            confm["know"] = true;
+            byte[] c_data = Server_main.dict_to_bytes(confm);
+            udp_agent.Send(c_data,target);
 
 
             sv_file_state = server_file_state.done;
-            owner.remove_client(target);
-            owner.remove_worker(target);
+            if(transfer_registry!= null)
+            {
+                transfer_registry.finished = true;
+                owner.remove_transfer_registry(transfer_registry);
+            }
+           
+           
             //long length = new System.IO.FileInfo(filepath).Length;
 
             owner.subtract_balance(target.Address,file_size);
@@ -607,20 +689,81 @@ namespace File_test_server.workers
                 Dictionary<string, object> end_packet = new();
                 end_packet["done"] = true;
                 end_packet["pos"] = 0;
-                long pf = get_packet_filesize();
                 byte[] j_bytes = Server_main.dict_to_bytes(end_packet);
+                udp_agent.Send(j_bytes,target);
+
+                byte[] client_data = queque_receive();
+                Dictionary<string,object>? client_dict = Server_main.bytes_to_dict(client_data);
+                log_message("Informing clients of the transfer's end");
+              
+               
+                long pf = get_packet_filesize();
+                
                 
 
                 for(int i = 0; i < owner.transfer_aux_ports.Count; i++)
                 {
                     IPEndPoint cl = owner.transfer_aux_ports[i];
                     udp_agent.Send(j_bytes, cl);
-                    owner.add_balance(target.Address, client_sent_packets[i]*pf);
+
+                    IPEndPoint cl_pv4 = new IPEndPoint(cl.Address.MapToIPv4(), cl.Port);
+                    string st_iep = cl_pv4.ToString();
+                    if(client_dict != null)
+                    {
+                        //Client received packets from an unknown source
+                        if(!client_dict.TryGetValue(st_iep,out _))
+                        {
+                            //log_message("Warning: Client received packets from a unknown client: " + st_iep);
+                            log_message("Client reported that peer: " + st_iep + " did not contribute to the transfer, skipping...");
+                            continue;
+                        }
+                        int? sent = client_dict[st_iep] as int?;
+                        int val = (sent is null) ? 1 : sent.Value;
+                        owner.add_balance(target.Address,  val* pf);
+                    }
+                    else
+                    {
+                        owner.add_balance(target.Address, client_sent_packets[i] * pf);
+                    }
+                   
                 }
             }
 
+            owner.remove_client(target);
+            owner.remove_worker(target);
             client_sent_packets.Clear();
             //packets_to_send.Clear();
+        }
+
+
+        public void peer_sort()
+        {
+            peers_sorted = true;
+
+            owner.transfer_aux_ports.OrderBy((x) =>
+            {
+                Client_registry cra = owner.get_c_registry(x);
+                //Client_registry crb = owner.get_c_registry(b);
+                Client_registry targ = owner.get_c_registry(target);
+
+                double dista = Server_main.harvesine(targ.coords.Item1, targ.coords.Item2, cra.coords.Item1, cra.coords.Item2);
+                //double distb = owner.harvesine(targ.coords.Item1, targ.coords.Item2, crb.coords.Item1, crb.coords.Item2);
+                return dista;
+            });
+
+            if(owner.transfer_aux_ports.Count <= 1)
+            {
+                return;
+            }
+            Client_registry targ = owner.get_c_registry(target);
+            Client_registry cra = owner.get_c_registry(owner.transfer_aux_ports[0]);
+            double dist = Server_main.harvesine(targ.coords.Item1, targ.coords.Item2, cra.coords.Item1, cra.coords.Item2);
+
+            if(dist >= 689)
+            {
+                //Too far, don't bother
+                owner.transfer_aux_ports.Clear();
+            }
         }
 
         public void file_transfer_state_machine()
@@ -645,6 +788,12 @@ namespace File_test_server.workers
 
                     case (server_file_state.transfer_file):
                         {
+
+                            if(!peers_sorted)
+                            {
+                                peer_sort();
+                            }
+
                             if (owner.will_server_do_transfer())
                             {
                                 log_message("Server will transfer alone");
@@ -654,7 +803,7 @@ namespace File_test_server.workers
                                     split_packets(complete_file_path);
                                 }
 
-                                Console.WriteLine(send_task == null);
+                                log_message("Send task is null: " + (send_task == null));
                             }
                             else
                             {
@@ -667,8 +816,7 @@ namespace File_test_server.workers
 
                     case (server_file_state.wait_confirmation):
                         {
-
-
+                            log_message("Waiting for client confirmation");
                             wait_confirm();
                             break;
                         }
@@ -676,11 +824,15 @@ namespace File_test_server.workers
                     case (server_file_state.done):
                         {
                             finish = true;
+                            owner.receiving_upd_ports.Remove(target);
+                            Dispose();
                             break;
                         }
                 }
                 Thread.Sleep(0);
             }
+
+            log_message("Transfer has concluded");
         }
 
 

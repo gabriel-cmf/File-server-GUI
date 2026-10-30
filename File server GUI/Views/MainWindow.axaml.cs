@@ -30,9 +30,12 @@ namespace File_server_GUI.Views
             {
 
                 sm= vm.sm;
+
+               
+               
                 vm.main_window = this;
                 sm.main_window = this;
-                server_main_init();
+                //server_main_init();
                 
             }
         }
@@ -41,6 +44,22 @@ namespace File_server_GUI.Views
         {
             Debug.WriteLine("Starting server listener");
             Task sm_task = Task.Factory.StartNew(() => { sm.listen_for_clients(); });
+
+            sm_task.ContinueWith(t => {
+                 if (t.Exception != null)
+                 {
+                     // Trigger your event here, passing t.Exception if needed
+                     sm.log_work.add_msg("Listen loop exited because of an error");
+                    Debug.WriteLine("Listen loop exited because of an error");
+                 }
+             }, TaskContinuationOptions.OnlyOnFaulted);
+        }
+
+        protected override void OnLoaded(RoutedEventArgs e)
+        {
+            base.OnLoaded(e);
+            // Your initialization logic here
+            server_main_init();
         }
 
         public void add_fr_info(File_registry_info fri)
@@ -53,12 +72,15 @@ namespace File_server_GUI.Views
 
         protected override void OnClosing(WindowClosingEventArgs e)
         {
-            
 
+            sm.keep_alive_timer.Restart();
+            sm.keep_alive_timer.Stop();
             Debug.WriteLine("Closing server");
             sm.add_log_msg("Closing server");
+            sm.do_listen_loop = false;
             sm.save_clients();
             sm.save_files();
+            sm.save_transfers();
             sm.stop_server();
             base.OnClosing(e);
             

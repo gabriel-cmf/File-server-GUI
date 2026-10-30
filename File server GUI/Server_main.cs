@@ -9,6 +9,7 @@ using File_test_server_gui.workers;
 using LiteDB;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -29,6 +30,9 @@ public enum client_message_type
     file_request = 2,
     shutdown = 3,
     file_storage_response =4,
+    hash_transfer = 5,
+    hash_report = 6,
+    file_repair=7
 
 }
 
@@ -36,12 +40,13 @@ public enum client_message_type
 public class Server_main
 {
     public const int listenPort = 3336;
-    UdpClient udp_agent;
+    public UdpClient udp_agent;
     public List<Worker_base> workerList;
     public List<IPEndPoint> client_upd_ports;
     public List<Task> tasks;
     public List<IPEndPoint> receiving_upd_ports;
     public List<IPEndPoint> transfer_aux_ports;
+    public List<Transfer_registry> transfer_registries;
     public Dictionary<string, File_registry> available_files;
     public Dictionary<IPAddress, Client_registry> active_clients;
     public Dictionary<IPEndPoint, Worker_base> worker_acess_dict;
@@ -51,6 +56,10 @@ public class Server_main
     public HashSet<int> rcv_client_codes;
     public HashSet<IPAddress> ip_filter;
     public HashSet<IPEndPoint> worker_filter;
+    public HashSet<IPAddress> pending_filter;
+    public HashSet<IPAddress> pending_filter2;
+    public ConcurrentQueue<Worker_base> urgent_worker_queue;
+
     public MainWindow main_window;
     public static string geodb_path = "GeoLite2-Country.mmdb";
     public static string geodb_path2 = "GeoLite2-City.mmdb";
@@ -58,50 +67,15 @@ public class Server_main
     public Logger_worker log_work;
     public Queue<IPEndPoint> file_listing_queue;
     public IPEndPoint dummy_iep;
+    public bool do_listen_loop;
+
+    public Dictionary<int, Client_query_worker> query_filter;
 
 
-    public Server_main()
+
+
+    public void load_db()
     {
-        udp_agent = new UdpClient(AddressFamily.InterNetworkV6);
-        udp_agent.Client.DualMode = true;
-        udp_agent.Client.SetSocketOption(SocketOptionLevel.Socket,SocketOptionName.ReuseAddress,true);
-        
-        udp_agent.ExclusiveAddressUse = false;
-        
-
-        //udp_agent.Client.Bind(new IPEndPoint(get_ipv6_adress(), listenPort));
-        udp_agent.Client.Bind(new IPEndPoint(IPAddress.IPv6Any, listenPort));
-        udp_agent.Client.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.MulticastLoopback, true);
-        //udp_agent.JoinMulticastGroup(IPAddress.Parse("FF02::1234"));
-
-
-        dummy_iep = new IPEndPoint(IPAddress.IPv6Any, listenPort);
-        workerList = new();
-        client_upd_ports = new();
-        tasks = new();
-        receiving_upd_ports = new();
-        transfer_aux_ports = new();
-
-        available_files = new();
-        server_filter = new();
-        worker_filter = new();
-        worker_acess_dict = new();
-        rcv_client_codes = new();
-        main_window = null;
-        active_clients = new();
-        ip_filter = new();
-        string day = DateTime.Now.ToString("yyyy-MM-dd");
-        log_work = new(this, "logs/" + day + ".txt");
-        file_listing_queue = new();
-
-        BsonMapper.Global.RegisterType<IPAddress>(
-
-             serialize: (endpoint) => endpoint.ToString(),
-
-
-           deserialize: (bson) => IPAddress.Parse(bson.AsString)
-    );
-
         udp_agent.Client.ReceiveTimeout = 5000;
 
         using (var db = new LiteDatabase("mydb.db"))
@@ -116,7 +90,7 @@ public class Server_main
             }
 
             var clients = db.GetCollection<Client_registry>("clients");
-            
+
             if (clients.Count() > 0)
             {
                 Debug.WriteLine("Clients found in db");
@@ -124,7 +98,7 @@ public class Server_main
                 foreach (Client_registry cr in clients.FindAll())
                 {
                     Debug.WriteLine(cr.balance);
-                   
+
                     cr.online = false;
                     ip_filter.Add(cr.ip_adress);
                     active_clients[cr.ip_adress] = cr;
@@ -133,8 +107,89 @@ public class Server_main
                 }
             }
 
+
+            var regs = db.GetCollection<Transfer_registry>("transfers");
+
+            if (regs.Count() > 0)
+            {
+                Debug.WriteLine("Transfer registries found in db");
+                add_log_msg("Transfer registries found in db");
+                foreach (Transfer_registry tr in regs.FindAll())
+                {
+                    if (!tr.finished)
+                    {
+                        //tr.finished = true;
+                        transfer_registries.Add(tr);
+                        //pending_filter.Add(tr.target.Address);
+                        Debug.WriteLine(tr.target.Address);
+                    }
+                }
+
+            }
+
+            regs.DeleteAll();
+        } 
+    }
+
+
+    public Server_main()
+    {
+        udp_agent = new UdpClient(AddressFamily.InterNetworkV6);
+        
+        udp_agent.Client.SetSocketOption(SocketOptionLevel.Socket,SocketOptionName.ReuseAddress,true);
+
+        udp_agent.Client.DualMode = true;
+        udp_agent.ExclusiveAddressUse = false;
+        
+
+        //udp_agent.Client.Bind(new IPEndPoint(get_ipv6_adress(), listenPort));
+        udp_agent.Client.Bind(new IPEndPoint(IPAddress.IPv6Any, listenPort));
+        udp_agent.Client.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.MulticastLoopback, true);
+        //udp_agent.JoinMulticastGroup(IPAddress.Parse("FF02::1234"));
+
+
+        if (OperatingSystem.IsWindows())
+        {
+            udp_agent.AllowNatTraversal(true);
         }
 
+        dummy_iep = new IPEndPoint(IPAddress.IPv6Any, listenPort);
+        workerList = new();
+        client_upd_ports = new();
+        tasks = new();
+        receiving_upd_ports = new();
+        transfer_aux_ports = new();
+
+        available_files = new();
+        server_filter = new();
+        worker_filter = new();
+        pending_filter = new();
+        pending_filter2 = new();
+        worker_acess_dict = new();
+        rcv_client_codes = new();
+        main_window = null;
+        active_clients = new();
+        ip_filter = new();
+        string day = DateTime.Now.ToString("yyyy-MM-dd");
+        log_work = new(this, "logs/" + day + ".txt");
+        file_listing_queue = new();
+
+        do_listen_loop=true;
+
+        query_filter = new();
+
+
+        transfer_registries = new();
+
+        BsonMapper.Global.RegisterType<IPAddress>(
+
+             serialize: (endpoint) => endpoint.ToString(),
+
+
+           deserialize: (bson) => IPAddress.Parse(bson.AsString) );
+
+
+        load_db();
 
 
         Dictionary<string, object> kpal_dict = new();
@@ -150,6 +205,8 @@ public class Server_main
         Debug.WriteLine(get_main_ip());
         add_log_msg("Server open at:");
         add_log_msg(get_main_ip().ToString());
+
+        urgent_worker_queue = new();
 
     }
 
@@ -179,20 +236,25 @@ public class Server_main
         return IPAddress.IPv6Any;
     }
 
-    public Task create_querier_worker(Dictionary<string, object> dict, string full_path, long client_code = 0)
+    public Task create_querier_worker(Dictionary<string, object> dict, string hash,IPEndPoint target, long client_code = 0)
     {
 
         Client_query_worker uw = new(this);
 
-        uw.target = client_upd_ports[0];
+        
         /*string filename = (string)dict["filename"];
         string ext = (string)dict["file_ext"];
         
         string comp = filename + ext;*/
-        uw.file_hash = full_path;
+        uw.file_hash = hash;
         uw.client_code = client_code;
         //uw.objective = worker_tasks.query_clients;
         //uw.data = dict;
+
+        //worker_acess_dict[uw.target] = uw;
+        uw.target = target;
+
+        query_filter[uw.GetHashCode()]= uw;
 
         Task worker_task = Task.Factory.StartNew(() => { uw.query_clients_for_file(); });
         tasks.Add(worker_task);
@@ -214,6 +276,7 @@ public class Server_main
             Dispatcher.UIThread.Post(() => main_window.add_client_observable(cr.client_ob));
         }
     }
+
     public bool will_server_do_transfer()
     {
         return transfer_aux_ports.Count <= 0;
@@ -307,6 +370,24 @@ public class Server_main
 
     }
 
+
+    public void add_transfer_registry(Transfer_registry tr)
+    {
+        transfer_registries.Add(tr);
+    }
+
+    public void remove_transfer_registry(Transfer_registry tr)
+    {
+        transfer_registries.Remove(tr);
+    }
+
+
+    public void add_transfer_registry(string h,string p,IPEndPoint t)
+    {
+        Transfer_registry tr = new Transfer_registry(h, p, t);
+        transfer_registries.Add(tr);
+    }
+
     public void save_clients()
     {
         using (var db = new LiteDatabase("mydb.db"))
@@ -342,6 +423,26 @@ public class Server_main
         add_log_msg("Clients saved to db");
     }
 
+
+    public void save_transfers()
+    {
+        using (var db = new LiteDatabase("mydb.db"))
+        {
+            var transfers = db.GetCollection<Transfer_registry>("transfers");
+            var transfers_list = transfer_registries.ToList();
+            foreach (Transfer_registry tr in transfers_list)
+            {
+                if(!tr.finished)
+                {
+                    transfers.Upsert(tr);
+                }
+                
+            }
+        }
+        Debug.WriteLine("Transfers saved to db");
+        add_log_msg("Transfers saved to db");
+    }
+
     public void update_client_registry(IPAddress ipa)
     {
         active_clients[ipa].set_online();
@@ -351,9 +452,37 @@ public class Server_main
     {
         
         bool client_busy=false;
-        while (true)
+        bool linux = OperatingSystem.IsLinux() || OperatingSystem.IsMacOS();
+        while (do_listen_loop)
         {
 
+
+            udp_agent.Client.ReceiveTimeout = 5000;
+
+            if(linux)
+            {
+                udp_agent.Client.ReceiveTimeout = 20000;
+            }
+
+            if (urgent_worker_queue.Count > 0 )
+            {
+                Worker_base? uw = null;
+                urgent_worker_queue.TryDequeue(out uw);
+
+                if(uw != null)
+                {
+                    switch (uw)
+                    {
+                        case File_repair_worker frw:
+                            {
+                                Debug.WriteLine("Urgent worker: File repair worker");
+                                create_file_resp_worker(frw);
+                                break;
+                            }
+                    }
+
+                }
+            }
             var ips = Dns.GetHostAddresses(Dns.GetHostName())[0];
             IPEndPoint groupEP = new(ips, 1);
             Console.WriteLine("Waiting for broadcast");
@@ -362,29 +491,48 @@ public class Server_main
             try
             {
                 bytes = udp_agent.Receive(ref groupEP);
+                //Debug.WriteLine($"Received broadcast from {groupEP}");
             }
             catch(Exception e)
             {
-                Debug.WriteLine("Listener timeout");
+                //Debug.WriteLine("Listener timeout");
                 add_log_msg("Listener timeout");
                 add_log_msg(e.Message);
+                add_log_msg(e.GetType().ToString());
                 Thread.Sleep(0);
 
             }
 
             if(worker_filter.Contains(groupEP))
             {
-                Debug.WriteLine("Message ment for worker caught");
+                //Debug.WriteLine("Message ment for worker caught");
                 log_work.add_msg("Message ment for worker caught");
 
                 bool new_add = worker_acess_dict.TryAdd(groupEP, null);
+
+
                 if(!new_add && bytes.Length > 0)
                 {
-                    worker_acess_dict[groupEP].add_packet(bytes);
+                    var wb = worker_acess_dict[groupEP];
+                    if (wb.GetType() == typeof(Client_query_worker))
+                    {
+                        //Debug.WriteLine("Received packet for query worker");
+                        var cqw = wb as Client_query_worker;
+                        if (cqw != null) 
+                        {
+                            cqw.remote_addr = groupEP;
+                        }
+                        else
+                        {
+                            throw new NullReferenceException("Client query worker was null");
+                        }
+                        
+                    }
+                    wb.add_packet(bytes);
                 }
                 else
                 {
-                    Debug.WriteLine("Worker not found for endpoint");
+                    //Debug.WriteLine("Worker not found for endpoint");
                     log_work.add_msg("Worker not found for endpoint");
                 }
                 
@@ -392,17 +540,37 @@ public class Server_main
             }
 
 
+           
+
             string b_st = Encoding.ASCII.GetString(bytes, 0, bytes.Length);
             Console.WriteLine($"{b_st}");
             Dictionary<string, object>? dict = JsonConvert.DeserializeObject<Dictionary<string, object>>(b_st);
-
+            object? temp=null;
             if (dict != null && bytes.Length > 0)
             {
+
+
+               
+
+                if (dict.TryGetValue("code",out temp))
+                {
+                    //Debug.WriteLine("Client query packet received");
+                    int? qcode = temp as int?;
+                    if (qcode != null)
+                    {
+                        query_filter[(int)qcode].add_packet(bytes);
+                        query_filter[(int)qcode].remote_addr = groupEP;
+                        continue;
+                    }
+                    
+                }
 
                 bool exists = false;
                 long client_code = (long)dict["client_code"];
                 if (bytes.Length > 0 && server_filter.Add(client_code))
                 {
+                    Debug.WriteLine("New client code added to server filter:");
+                    Debug.WriteLine(client_code);
                     client_upd_ports.Add(groupEP);
                 }
                 else
@@ -441,9 +609,26 @@ public class Server_main
 
                             Dictionary<string, object> wra = new();
                             wra["type"] = 0;
+
+
+                            //Client has pending transfer, ask if it wants to resume
+                            if (pending_filter.Contains(groupEP.Address))
+                            {
+                                Debug.WriteLine("Client has pending transfer, asking if it wants to resume");
+                                wra["type"] = 5;
+                                pending_filter.Remove(groupEP.Address);
+                                pending_filter2.Add(groupEP.Address);
+                                //create_hash_transfer_worker(groupEP);
+
+                            }
+
+
+
                             var j_bytes = dict_to_bytes(wra);
 
                             udp_agent.Send(j_bytes, groupEP);
+
+                            client_busy = true;
 
 
 
@@ -469,7 +654,7 @@ public class Server_main
 
                             create_fileresp_worker(dict, groupEP, client_code);
                             dict["type"] = 0;
-                            client_busy=true;
+                            client_busy = true;
 
                             break;
                         }
@@ -485,6 +670,8 @@ public class Server_main
                                 active_clients[groupEP.Address].set_offline();
                             }
 
+                            client_busy = true;
+
                             break;
                         }
 
@@ -492,10 +679,10 @@ public class Server_main
                         {
                             long count = (long)dict["count"];
 
-                            if(count  > 0)
+                            if (count > 0)
                             {
                                 Client_registry cr = active_clients[groupEP.Address];
-                                File_storage_worker fsw= new(this,cr);
+                                File_storage_worker fsw = new(this, cr);
                                 fsw.target = groupEP;
                                 fsw.expected_packets = count;
 
@@ -505,6 +692,39 @@ public class Server_main
                             }
 
                             break;
+                        }
+
+                    case (client_message_type.hash_transfer):
+                        {
+
+                            Debug.WriteLine("Sending hashes to client");
+
+                            if (pending_filter2.Contains(groupEP.Address))
+                            {
+                                pending_filter2.Remove(groupEP.Address);
+                                create_hash_transfer_worker(groupEP);
+
+                            }
+                            break;
+                        }
+
+                    case (client_message_type.hash_report):
+                        {
+
+
+                            Debug.WriteLine("Received hash report from client");
+                            create_hash_report_worker(groupEP);
+                            break;
+                        }
+
+                    case (client_message_type.file_repair):
+                        {
+                            Debug.WriteLine("Received file repair request from client");
+                            string hash = (string)dict["hash"];
+                            File_registry fr = available_files[hash];
+                            create_file_repair_worker(groupEP, fr, dict);
+                            break;
+
                         }
                 }
 
@@ -533,6 +753,7 @@ public class Server_main
             {
                 if (tasks[it].IsCompleted)
                 {
+                    Debug.WriteLine(tasks[it].Status.ToString());
                     //tasks[it].Dispose();
                     tasks.RemoveAt(it);
                 }
@@ -542,9 +763,11 @@ public class Server_main
                 }
             }
 
-            
+            Debug.WriteLine($"Active workers: {workerList.Count}");
 
-          
+
+
+
 
 
             if (keep_alive_timer.ElapsedMilliseconds >= 5000)
@@ -568,6 +791,11 @@ public class Server_main
 
         }
 
+        if(do_listen_loop)
+        {
+            throw new Exception("Listen loop somehow was exited");
+        }
+        
 
 
 
@@ -604,8 +832,11 @@ public class Server_main
         string rcv_hash = (string)dict["hash"];
         uw.received_hash = rcv_hash;
         uw.rcv_client_code = client_code;
-        uw.file_size = available_files[rcv_hash].filesize;
+        //uw.file_size = available_files[rcv_hash].filesize;
         worker_filter.Add(tg);
+
+
+        bool partial = dict.TryGetValue("partial",out _);
 
 
         uw.target = tg;
@@ -618,7 +849,7 @@ public class Server_main
         uw.data = dict;
         workerList.Add(uw);
         worker_acess_dict[tg] = uw;
-        Task worker_task = Task.Factory.StartNew(() => { uw.pair_up(); });
+        Task worker_task = Task.Run(() => { uw.pair_up(); });
         tasks.Add(worker_task);
         add_log_msg("File response worker created");
 
@@ -749,6 +980,27 @@ public class Server_main
         udp_agent.Close();
     }
 
+    public void add_worker_filter_client(IPEndPoint iep,Worker_base wb)
+    {
+        worker_filter.Add(iep);
+        worker_acess_dict[iep] = wb;
+        Debug.WriteLine("Added worker filter for client");
+        Debug.WriteLine(iep.ToString());
+    }
+
+    public void remove_worker_filter_client(IPEndPoint iep)
+    {
+        if(worker_acess_dict.ContainsKey(iep))
+        {
+            worker_acess_dict.Remove(iep);
+        }
+
+        if(worker_filter.Contains(iep))
+        {
+            worker_filter.Remove(iep);
+        }
+    }
+
     public void remove_client(IPEndPoint iep)
     {
         worker_filter.Remove(iep);
@@ -759,6 +1011,97 @@ public class Server_main
         //worker_filter.Remove(iep);
         worker_acess_dict.Remove(iep);
     }
+
+    public void create_hash_transfer_worker(IPEndPoint iep)
+    {
+        //.MapToIPv4()
+        IPAddress iepv4 = iep.Address;
+        Debug.WriteLine(iep.ToString());
+        //List<Transfer_registry> hashes = transfer_registries.Where(x=> x.target.Address.Equals(iepv4)).ToList();
+        List<Transfer_registry> hashes = new();
+
+        for(int i = 0;i<transfer_registries.Count;i++)
+        {
+            if(transfer_registries[i].target.Address.Equals(iepv4))
+            {
+                transfer_registries[i].finished = true;
+                hashes.Add(transfer_registries[i]);
+            }
+        }
+        Debug.WriteLine("Creating hash transfer worker for client with pending transfers");
+        
+        Debug.WriteLine(hashes.Count);
+        Hash_transfer_worker htw = new(this);
+        htw.Hashes = hashes;
+        htw.target = iep;
+        workerList.Add(htw);
+
+        worker_acess_dict[iep] = htw;
+
+        worker_filter.Add(iep);
+
+        //Dictionary<string,object> packet = new Dictionary<string,object>();
+        //packet["type"] = 5;
+
+        //byte[] j_bytes = dict_to_bytes(packet);
+        //htw.send_data(j_bytes, iep);
+
+        Task worker_task = Task.Factory.StartNew(() => { htw.pair_up(); });
+        tasks.Add(worker_task);
+    }
+
+    public void create_hash_report_worker(IPEndPoint iep)
+    {
+        Hash_report_receive_worker hrrw = new(this, active_clients[iep.Address]);
+        hrrw.target = iep;
+        workerList.Add(hrrw);
+        worker_acess_dict[iep] = hrrw;
+        worker_filter.Add(iep);
+        Task worker_task = Task.Factory.StartNew(() => { hrrw.pair_up(); });
+        tasks.Add(worker_task);
+    }
+
+    public void create_file_repair_worker(IPEndPoint iep, File_registry fr, Dictionary<string, object> dict)
+    {
+        File_repair_worker frw = new(this);
+        frw.target = iep;
+        //frw.file_hash = hash;
+
+        frw.registry = fr;
+        frw.file_path = fr.full_path;
+        frw.file_size = fr.filesize;
+        frw.packets_per_chunk = (long)dict["packets"];
+        workerList.Add(frw);
+        worker_acess_dict[iep] = frw;
+        worker_filter.Add(iep);
+        Task worker_task = Task.Factory.StartNew(() => { frw.pair_up(); });
+        tasks.Add(worker_task);
+    }
+
+    public void create_file_resp_worker(File_repair_worker frw)
+    {
+        File_transfer_worker ftw = new(this);
+        ftw.target = frw.target;
+        ftw.received_hash = frw.registry.file_hash;
+        ftw.file_size = frw.file_size;
+        ftw.complete_file_path = frw.file_path;
+
+
+        workerList.Add(ftw);
+        worker_acess_dict[frw.target] = ftw;
+        worker_filter.Add(frw.target);
+
+        ftw.sv_file_state = server_file_state.wait_confirmation;
+
+
+        Debug.WriteLine("Creating file response worker for file repair");
+        Task worker_task = Task.Run(() => { ftw.begin(); });
+        tasks.Add(worker_task);
+    }
+
+
+
+
 
 
 

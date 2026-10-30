@@ -20,6 +20,7 @@ namespace File_test_server_gui.data
 
         public string type { get; set; }
         public long filesize { get; set; }
+
         public float upload_bonus;
         public long required_credit;
         public float required_ratio;
@@ -93,7 +94,7 @@ namespace File_test_server_gui.data
 
         public bool is_valid()
         {
-            bool valid =false ;
+            bool valid = false;
 
             try
             {
@@ -103,14 +104,14 @@ namespace File_test_server_gui.data
                 }
                 valid = true;
             }
-            catch (Exception e) 
-            { 
-               valid = false;
+            catch (Exception e)
+            {
+                valid = false;
             }
 
             return valid;
         }
 
-       
+
     }
 }

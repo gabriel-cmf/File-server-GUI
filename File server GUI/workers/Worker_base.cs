@@ -27,27 +27,36 @@ namespace File_test_server_gui.workers
 
         public Worker_base(Server_main ow)
         {
-            udp_agent = new UdpClient(AddressFamily.InterNetworkV6);
+            /*udp_agent = new UdpClient(AddressFamily.InterNetworkV6);
             udp_agent.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
             udp_agent.Client.DualMode = true;
             udp_agent.ExclusiveAddressUse = false;
             udp_agent.Client.Bind(new IPEndPoint(IPAddress.IPv6Any, Server_main.listenPort));
-            udp_agent.Client.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.MulticastLoopback, true);
+            udp_agent.Client.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.MulticastLoopback, true);*/
+
+
             //udp_agent.JoinMulticastGroup(IPAddress.Parse("FF02::1234"));
 
+
+            
+            owner = ow;
+
+            udp_agent = owner.udp_agent;
 
             if (OperatingSystem.IsWindows())
             {
                 udp_agent.AllowNatTraversal(true);
             }
 
-            owner = ow;
+
+
             stopwatch = new();
 
             var ips = Dns.GetHostAddresses(Dns.GetHostName())[0];
             target = new IPEndPoint(ips, 1);
             server_packets = new();
+            trash = new IPEndPoint(0, 0);
 
         }
 
@@ -63,7 +72,7 @@ namespace File_test_server_gui.workers
             var json_dict = JsonConvert.SerializeObject(ack);
             var j_bytes = Encoding.ASCII.GetBytes(json_dict);
             //udp_agent.Connect(target);
-            
+
             log_message("Attempting to pair-up with client...");
             while (!paired)
             {
@@ -75,13 +84,16 @@ namespace File_test_server_gui.workers
 
                     //var resp = udp_agent.Receive(ref trash);
                     var resp = queque_receive();
-                    log_message("Response received from client");
+                    
 
                     if (resp != null && resp.Length > 0)
                     {
+                        log_message("Response received from client");
                         paired = true;
                         break;
                     }
+
+
                 }
                 catch (Exception e)
                 {
@@ -95,6 +107,7 @@ namespace File_test_server_gui.workers
 
             log_message("Pair-up with client sucessful !");
             begin();
+            log_message("Work cycle has concluded");
 
 
 
@@ -102,7 +115,7 @@ namespace File_test_server_gui.workers
 
         public void Dispose()
         {
-            udp_agent.Dispose();
+            //udp_agent.Dispose();
 
         }
 
@@ -130,12 +143,30 @@ namespace File_test_server_gui.workers
 
         public byte[] queque_receive()
         {
-            while (server_packets.Count <= 0)
+            stopwatch.Restart();
+            while (server_packets.Count <= 0 && stopwatch.ElapsedMilliseconds < queue_timeout)
             {
                 Thread.Sleep(0);
             }
 
+            stopwatch.Stop();
+
+            if (stopwatch.ElapsedMilliseconds >= queue_timeout)
+            {
+                log_message("Warning: Queque_receive  has timed out");
+                return Array.Empty<byte>();
+            }
+
+
             return server_packets.Take();
+        }
+
+        public int queque_receive_from(ref byte[] buffer)
+        {
+            var data = queque_receive();
+            Array.Copy(data, buffer, data.Length);
+
+            return data.Length;
         }
 
         public async Task<byte[]> queque_receive_async()
@@ -147,7 +178,7 @@ namespace File_test_server_gui.workers
             }
             stopwatch.Stop();
 
-            if (stopwatch.ElapsedMilliseconds  >= queue_timeout)
+            if (stopwatch.ElapsedMilliseconds >= queue_timeout)
             {
                 return Array.Empty<byte>();
             }
@@ -155,5 +186,13 @@ namespace File_test_server_gui.workers
             return server_packets.Take();
         }
 
+
+        public void send_data(byte[] data, IPEndPoint iep)
+        {
+           
+            udp_agent.Send(data, iep);
+
+        }
     }
+
 }

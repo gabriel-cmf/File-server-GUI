@@ -513,7 +513,7 @@ public class Udp_worker : IDisposable
     public void prepare_transfer_data()
     {
         Console.WriteLine("Creating client querier");
-        var qr = owner.create_querier_worker(data, "");
+        var qr = owner.create_querier_worker(data, "",target);
         byte[] bytes = udp_agent.Receive(ref trash);
 
 

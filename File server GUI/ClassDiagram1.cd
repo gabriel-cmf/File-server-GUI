@@ -1,0 +1,261 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="File_server_GUI.data.Client_observable" Collapsed="true">
+    <Position X="28.5" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAABCAAgAAAAIAAAAAIABAAAAQAAAAgAAAAAAA=</HashCode>
+      <FileName>data\Client_observable.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.data.Client_registry" Collapsed="true">
+    <Position X="26" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>IgAAIAAABAAAgAgQAAAAgQAIEBBCAAQQEQAEAAACAEA=</HashCode>
+      <FileName>data\Client_registry.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Field Name="client_ob" />
+    </ShowAsAssociation>
+  </Class>
+  <Class Name="File_server_GUI.data.File_registry_info" Collapsed="true">
+    <Position X="28.5" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAQAAAAAAgAAAAAAAAAAAIEAAAAAAAAAAAAAAIAA=</HashCode>
+      <FileName>data\File_registry_info.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.data.Transfer_registry" Collapsed="true">
+    <Position X="26" Y="2.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAACIAACAAAEAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>data\Transfer_registry.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_test_server_gui.data.File_registry" Collapsed="true">
+    <Position X="26" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAgAAAAAAAQCAAGAECAAQAAEIhAAQACSAAAAEAIAA=</HashCode>
+      <FileName>data\File_registry.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Field Name="fr_info" />
+    </ShowAsAssociation>
+  </Class>
+  <Class Name="File_server_GUI.ViewModels.Balance_edit_Model" Collapsed="true">
+    <Position X="6.5" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>ABYAAIAAAAAAAAAAIAAAAICAAAAAAAAAAAEAAAAAAAA=</HashCode>
+      <FileName>ViewModels\Balance_edit_Model.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.ViewModels.File_add_Model" Collapsed="true">
+    <Position X="8.75" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAACAAEQEAAAAAAAAAQEEAAAAIAAAAAAAAIAA=</HashCode>
+      <FileName>ViewModels\File_add_Model.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.ViewModels.File_edit_Model" Collapsed="true">
+    <Position X="2" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>EAQAAAAAAAAAAgAAAAAAAAAAAEIAEAAAAAAAAAAACIA=</HashCode>
+      <FileName>ViewModels\File_edit_Model.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.ViewModels.MainWindowViewModel" Collapsed="true">
+    <Position X="4.25" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>EAQAIAQAQAAEAAAAABAAACAAAAAAAAAABAAAAiAAAgA=</HashCode>
+      <FileName>ViewModels\MainWindowViewModel.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.ViewModels.ViewModelBase" Collapsed="true">
+    <Position X="5.25" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>ViewModels\ViewModelBase.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.Views.Edit_balance_Window" Collapsed="true">
+    <Position X="8.25" Y="7.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>BAAAAAAAQAAQCAQAIAAAAAAAAAAAAAAIAAAAAAAAAAA=</HashCode>
+      <FileName>Views\Edit_balance_Window.axaml.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.Views.File_add_Window" Collapsed="true">
+    <Position X="4.25" Y="7.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAQAAQAAAAAAAAAAAAAAAAAIAAAgAAAAAAAAA=</HashCode>
+      <FileName>Views\File_add_Window.axaml.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.Views.File_edit_Window" Collapsed="true">
+    <Position X="6.25" Y="7.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>YAAAAAQAQAARAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Views\File_edit_Window.axaml.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.Views.MainWindow" Collapsed="true">
+    <Position X="2.25" Y="7.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AACAAAAAAIAEAAAAQAAAgAAAAAEAAAACAAAIAAAAAAA=</HashCode>
+      <FileName>Views\MainWindow.axaml.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_test_server_gui.workers.Client_query_worker" Collapsed="true">
+    <Position X="17.75" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAABIAAAIAAAAAAAAAAIABgAAAAAAAAAAAAA=</HashCode>
+      <FileName>workers\Client_query_worker.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_test_server_gui.workers.Logger_worker" Collapsed="true">
+    <Position X="15.25" Y="4.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAEAEAAAABBAAAAAAAQAAAAAAAAAAAAAAAAAAE=</HashCode>
+      <FileName>workers\Logger_worker.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_test_server_gui.workers.Worker_base" Collapsed="true">
+    <Position X="17.75" Y="3.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAABIAgCAGAAgAAAIEAAAAwQJAAABAAAAAIAAAAAACA=</HashCode>
+      <FileName>workers\Worker_base.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="File_server_GUI.workers.File_repair_worker" Collapsed="true">
+    <Position X="20.25" Y="3" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAABEAAIEAAAAAIAAAAAQAAAAAAQEAAABAAAAABA=</HashCode>
+      <FileName>workers\File_repair_worker.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.workers.File_storage_worker" Collapsed="true">
+    <Position X="15.25" Y="2.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAgACAAAAAIQAAgAAAAAAAgQAAAIAAAEBAAAAAAQECA=</HashCode>
+      <FileName>workers\File_storage_worker.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.workers.Hash_report_receive_worker" Collapsed="true">
+    <Position X="20.5" Y="4.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAgAAABAAAIQQAwAAAAAAAgQAAAIgAAEBACAAAAQACA=</HashCode>
+      <FileName>workers\Hash_report_receive_worker.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.workers.Hash_transfer_worker" Collapsed="true">
+    <Position X="20.25" Y="2" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AABAgAAAAAACSAABAAIAEAIQAAAEAAAEEAAAAAAAAAA=</HashCode>
+      <FileName>workers\Hash_transfer_worker.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_test_server.workers.File_transfer_worker" Collapsed="true">
+    <Position X="17.75" Y="4.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>UAQAEAIqhAYCaAEIAEEAAQkQAAEEAgAgQAAQCAAAAhA=</HashCode>
+      <FileName>workers\File_transfer_worker.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Server_main" Collapsed="true">
+    <Position X="10.75" Y="3.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>gjU1EQERAwACAjioBNOAgsAmomSQIpgAAAQJApCgAIE=</HashCode>
+      <FileName>Server_main.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="File_server_GUI.App" Collapsed="true">
+    <Position X="23.75" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAgAAAAEAA=</HashCode>
+      <FileName>App.axaml.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Avalonia.Controls.Window" Collapsed="true">
+    <Position X="4.25" Y="6.25" Width="1.5" />
+    <TypeIdentifier />
+    <Lollipop Position="0.2" />
+  </Class>
+  <Struct Name="File_server_GUI.workers.raw_data_packet" Collapsed="true">
+    <Position X="27.25" Y="8" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAQAAAAAAA=</HashCode>
+      <FileName>workers\File_storage_worker.cs</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Struct Name="File_server_GUI.workers.hash_report" Collapsed="true">
+    <Position X="25.5" Y="8" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAQAAAAAAA=</HashCode>
+      <FileName>workers\Hash_report_receive_worker.cs</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Struct Name="File_server_GUI.workers.data_packet" Collapsed="true">
+    <Position X="23.75" Y="8" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAQAAAAAAA=</HashCode>
+      <FileName>workers\Hash_transfer_worker.cs</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Struct Name="File_test_server.workers.s_packet" Collapsed="true">
+    <Position X="29" Y="8" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAQAAAAAAA=</HashCode>
+      <FileName>workers\File_transfer_worker.cs</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Enum Name="File_server_GUI.workers.File_repair_worker_state" Collapsed="true">
+    <Position X="25.5" Y="9.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAQAAAQAAAQAAAAAEAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>workers\File_repair_worker.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="File_server_GUI.workers.storage_state" Collapsed="true">
+    <Position X="23.75" Y="10" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAA=</HashCode>
+      <FileName>workers\File_storage_worker.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="File_server_GUI.workers.hash_report_state" Collapsed="true">
+    <Position X="27.25" Y="9.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAQAAAAAAAQAAAAAAAAAAAAAAAAAAEAAAAAAA=</HashCode>
+      <FileName>workers\Hash_report_receive_worker.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="File_server_GUI.workers.transfer_state" Collapsed="true">
+    <Position X="25.5" Y="10" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAQAAAAAAAAAAAEAAAAAAEAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>workers\Hash_transfer_worker.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="File_test_server.workers.server_file_state" Collapsed="true">
+    <Position X="29" Y="9.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAQAAAQAAAAhAAAAAAAAAAACAAAAAAAAAAAAA=</HashCode>
+      <FileName>workers\File_transfer_worker.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="worker_tasks" Collapsed="true">
+    <Position X="27.25" Y="10" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AQAAAAAEAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>workers\Udp_worker.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="client_message_type" Collapsed="true">
+    <Position X="23.75" Y="9.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>IAAAAAAAAAAAAACBAAAAAAAAAAAIAAAAABAAAAUgAAA=</HashCode>
+      <FileName>Server_main.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>
